@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SmartRead AI - Chrome Built-in AI Suite</title>
+  <link rel="stylesheet" href="popup-enhanced.css" />
+</head>
+<body>
+  <div class="header">
+    <div class="header-content">
+      <img src="icons/brand.svg" alt="SmartRead AI" class="logo" />
+      <div class="header-text">
+        <h1>SmartRead AI</h1>
+        <span class="subtitle">Powered by Chrome AI</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="statusBar" class="status" aria-live="polite">
+    <span class="status-icon">●</span>
+    <span id="statusText">Ready</span>
+  </div>
+
+  <!-- Search Bar -->
+  <div class="search-bar">
+    <div class="search-input">
+      <span class="search-icon">🔎</span>
+      <input id="searchInput" type="text" placeholder="Search saved items" />
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="summarize">
+      <span class="tab-icon">📄</span>
+      Summarize
+    </button>
+    <button class="tab-btn" data-tab="write">
+      <span class="tab-icon">✍️</span>
+      Write
+    </button>
+    <button class="tab-btn" data-tab="improve">
+      <span class="tab-icon">🔧</span>
+      Improve
+    </button>
+    <button class="tab-btn" data-tab="analyze">
+      <span class="tab-icon">🖼️</span>
+      Analyze
+    </button>
+  </div>
+
+  <!-- Tab Contents -->
+  <div class="tab-content" id="summarize-tab" style="display:block;">
+    <div class="action-grid">
+      <button id="summarizeBtn" class="primary-btn">
+        <span class="btn-icon">⚡</span>
+        Smart Summarize
+      </button>
+      <button id="structuredBtn" class="secondary-btn">
+        <span class="btn-icon">📊</span>
+        Structured Summary
+      </button>
+      <button id="summarizeAllBtn" class="secondary-btn">
+        <span class="btn-icon">🗂️</span>
+        Summarize All Tabs
+      </button>
+    </div>
+    
+    <div class="options-row">
+      <select id="templateSelect" class="select-input" title="Template">
+        <option value="default">Default</option>
+        <option value="product">Product page</option>
+        <option value="job">Job posting</option>
+        <option value="research">Research article</option>
+      </select>
+      <select id="langSelect" class="select-input" title="Target language">
+        <option value="en">🇬🇧 English</option>
+        <option value="hi">🇮🇳 Hindi</option>
+        <option value="es">🇪🇸 Spanish</option>
+        <option value="fr">🇫🇷 French</option>
+        <option value="ar">🇸🇦 Arabic</option>
+        <option value="zh">🇨🇳 Chinese</option>
+      </select>
+      <button id="translateBtn" class="icon-btn" title="Translate">
+        <span>🌐</span>
+      </button>
+      <button id="speakBtn" class="icon-btn" title="Read aloud">
+        <span>🔊</span>
+      </button>
+      <button id="copyBtn" class="icon-btn" title="Copy">
+        <span>📋</span>
+      </button>
+      <button id="saveBtn" class="icon-btn" title="Save">
+        <span>💾</span>
+      </button>
+      <button id="exportBtn" class="icon-btn" title="Export Markdown">
+        <span>⬇️</span>
+      </button>
+    </div>
+
+    <div id="summaryArea" class="output-area">
+      <div id="summaryOutput" class="output-content">
+        <p class="placeholder">Click "Smart Summarize" to extract key insights from this page</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="write-tab" style="display:none;">
+    <div class="input-group">
+      <textarea id="writePrompt" class="text-input" placeholder="What would you like to write about? Be specific..." rows="3"></textarea>
+      <div class="tone-selector">
+        <label>Tone:</label>
+        <select id="writeTone" class="select-input">
+          <option value="casual">Casual</option>
+          <option value="formal">Formal</option>
+          <option value="neutral">Neutral</option>
+        </select>
+      </div>
+      <button id="generateBtn" class="primary-btn">
+        <span class="btn-icon">✨</span>
+        Generate Content
+      </button>
+    </div>
+    <div id="writeOutput" class="output-area">
+      <div class="output-content">
+        <p class="placeholder">Your AI-generated content will appear here</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="improve-tab" style="display:none;">
+    <div class="input-group">
+      <textarea id="improveText" class="text-input" placeholder="Paste text you want to improve..." rows="4"></textarea>
+      <div class="rewrite-options">
+        <select id="rewriteTone" class="select-input">
+          <option value="as-is">Keep tone</option>
+          <option value="more-formal">More formal</option>
+          <option value="more-casual">More casual</option>
+        </select>
+        <select id="rewriteLength" class="select-input">
+          <option value="as-is">Keep length</option>
+          <option value="shorter">Make shorter</option>
+          <option value="longer">Make longer</option>
+        </select>
+      </div>
+      <button id="rewriteBtn" class="primary-btn">
+        <span class="btn-icon">🔄</span>
+        Rewrite & Improve
+      </button>
+      <button id="proofreadBtn" class="secondary-btn">
+        <span class="btn-icon">✔️</span>
+        Quick Proofread
+      </button>
+    </div>
+    <div id="improveOutput" class="output-area">
+      <div class="output-content">
+        <p class="placeholder">Improved text will appear here</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="analyze-tab" style="display:none;">
+    <div class="input-group">
+      <div class="image-upload">
+        <input type="file" id="imageInput" accept="image/*" style="display:none;">
+        <button id="uploadImageBtn" class="secondary-btn">
+          <span class="btn-icon">📷</span>
+          Select Image
+        </button>
+        <span id="imageName" class="file-name">No image selected</span>
+      </div>
+      <textarea id="imagePrompt" class="text-input" placeholder="What would you like to know about this image?" rows="2"></textarea>
+      <button id="analyzeImageBtn" class="primary-btn" disabled>
+        <span class="btn-icon">🔍</span>
+        Analyze Image
+      </button>
+    </div>
+    <div id="analyzeOutput" class="output-area">
+      <div class="output-content">
+        <p class="placeholder">Upload an image and ask a question to analyze it with AI</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Saved Items -->
+  <div class="saved-section">
+    <div class="section-header">
+      <h3>📚 Recent Saves</h3>
+      <button id="clearSavesBtn" class="text-btn">Clear all</button>
+    </div>
+    <ul id="savedList" class="saved-list"></ul>
+  </div>
+
+  <script src="advanced-features.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

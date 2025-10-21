@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background Circle -->
+    <circle cx="8" cy="8" r="8" fill="url(#paint0_linear)"/>
+    
+    <!-- Book Pages -->
+    <path d="M4.33333 4.33333C4.33333 4.14924 4.48257 4 4.66667 4H11.3333C11.5174 4 11.6667 4.14924 11.6667 4.33333V11.6667C11.6667 11.8508 11.5174 12 11.3333 12H4.66667C4.48257 12 4.33333 11.8508 4.33333 11.6667V4.33333Z" fill="white"/>
+    
+    <!-- AI Brain Symbol -->
+    <path d="M8 5.33333C6.52724 5.33333 5.33333 6.52724 5.33333 8C5.33333 9.47276 6.52724 10.6667 8 10.6667C9.47276 10.6667 10.6667 9.47276 10.6667 8C10.6667 6.52724 9.47276 5.33333 8 5.33333ZM7.625 6.33333H8.375V7H7.625V6.33333ZM8.625 9.66667H7.375V8.83333H7.625V8H7.375V7H7.875V8.83333H8.125V9.66667H8.625Z" fill="url(#paint1_linear)"/>
+    
+    <!-- Text Lines -->
+    <rect x="5.5" y="5.5" width="5" height="0.25" rx="0.125" fill="#E8EAED" opacity="0.6"/>
+    <rect x="5.5" y="10.25" width="5" height="0.25" rx="0.125" fill="#E8EAED" opacity="0.6"/>
+    
+    <!-- Gradient Definitions -->
+    <defs>
+        <linearGradient id="paint0_linear" x1="0" y1="0" x2="16" y2="16" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#4285F4"/>
+            <stop offset="1" stop-color="#0F9D58"/>
+        </linearGradient>
+        <linearGradient id="paint1_linear" x1="5.33333" y1="5.33333" x2="10.6667" y2="10.6667" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#4285F4"/>
+            <stop offset="1" stop-color="#0F9D58"/>
+        </linearGradient>
+    </defs>
+</svg>

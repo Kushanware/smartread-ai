@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "SmartRead AI",
+  "version": "1.0",
+  "description": "Summarize, translate, and proofread web content locally using Chrome Built-in AI.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs",
+    "storage",
+    "contextMenus"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "128": "icons/icon128.png",
+    "48": "icons/icon48.png",
+    "16": "icons/icon16.png"
+  },
+  "content_scripts": [{
+    "matches": ["https://*/*", "http://*/*"],
+    "js": ["compose-overlay.js"],
+    "run_at": "document_idle"
+  }],
+  "commands": {
+    "summarize-selection": {
+      "suggested_key": { "default": "Alt+S" },
+      "description": "Summarize selected text"
+    },
+    "rewrite-selection": {
+      "suggested_key": { "default": "Alt+R" },
+      "description": "Rewrite selected text"
+    }
+  }
+}

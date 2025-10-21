@@ -1,0 +1,228 @@
+/* Popup Styles */
+body {
+  width: 380px;
+  margin: 0;
+  padding: 0;
+  font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  background: #ffffff;
+  color: #333;
+  min-height: 420px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #4285f4, #0f9d58);
+  color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.logo {
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e8eaed;
+}
+
+.status {
+  padding: 8px 16px;
+  background: #f1f3f4;
+  color: #3c4043;
+  border-bottom: 1px solid #e8eaed;
+  font-size: 13px;
+}
+.status.progress { color: #1a73e8; }
+.status.error { color: #d32f2f; }
+
+button {
+  padding: 10px 16px;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+  grid-column: span 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+button:hover {
+  background-color: #1a73e8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+button:disabled {
+  background-color: #dadce0;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+#translateBtn, #saveBtn, #copyBtn {
+  grid-column: span 1;
+}
+
+#proofreadBtn {
+  grid-column: span 2;
+}
+
+select {
+  padding: 10px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  font-size: 14px;
+  grid-column: span 2;
+  background-color: white;
+  color: #3c4043;
+  cursor: pointer;
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg fill="%23444" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 32px;
+}
+
+button:hover {
+  background-color: #006CBC;
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+#summaryArea, .proofread, .saved {
+  padding: 16px;
+  border-top: 1px solid #e8eaed;
+  background: white;
+}
+
+h2, h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #202124;
+  font-weight: 500;
+}
+
+#summaryOutput {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #e8eaed;
+  color: #3c4043;
+  margin-bottom: 12px;
+}
+
+#summaryOutput:empty::before {
+  content: 'Click "Summarize Page" to begin.';
+  color: #5f6368;
+  font-style: italic;
+}
+
+.proofread p {
+  font-size: 14px;
+  color: #5f6368;
+  margin: 0;
+  line-height: 1.5;
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e8eaed;
+}
+
+.proofread strong {
+  color: #1a73e8;
+  font-weight: 500;
+}
+
+#savedList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+}
+
+#savedList li {
+  padding: 12px;
+  border-bottom: 1px solid #e8eaed;
+  font-size: 13px;
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+
+#savedList li:hover {
+  background-color: #f8f9fa;
+}
+
+#savedList li:last-child {
+  border-bottom: none;
+}
+
+#savedList:empty::after {
+  content: 'No saved summaries yet.';
+  display: block;
+  padding: 12px;
+  color: #5f6368;
+  font-style: italic;
+  text-align: center;
+}
+
+#summaryContent {
+  margin-top: 8px;
+  white-space: pre-wrap;
+}
+
+.translate-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+select {
+  padding: 6px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+#savedSummaries {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.saved-item {
+  padding: 8px;
+  margin: 4px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
