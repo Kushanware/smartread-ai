@@ -4,8 +4,18 @@
     let summarizerSession = null;
     let translatorSession = null;
 
+    // Debug logging toggle
+    const DEBUG_LOG = true;
+    function dbg(...args) {
+        if (!DEBUG_LOG) return;
+        try {
+            console.debug('[SmartRead]', new Date().toISOString(), ...args);
+        } catch (e) { /* noop */ }
+    }
+
     // Helper function to show status messages
     function showStatus(message, isError = false) {
+        try { dbg('showStatus', { message, isError }); } catch (e) {}
         const output = document.getElementById('summaryOutput');
         if (output) {
             if (typeof message === 'string') {
@@ -29,6 +39,9 @@
         }
     }
 
+    // In-memory cache for saved summaries to avoid repeated storage IO
+    let cachedSummaries = null;
+
     // Demo responses for when AI is not available
     function getDemoSummary(text) {
         const medicalTerms = ['medical', 'health', 'doctor', 'patient', 'treatment', 'diagnosis', 'therapy', 'medicine', 'clinical', 'hospital'];
@@ -44,23 +57,83 @@
     function getDemoTranslation(text, targetLang) {
         const langNames = {
             'en': 'English',
-            'hi': 'Hindi', 
+            'hi': 'Hindi',
             'es': 'Spanish',
             'fr': 'French',
-            'ar': 'Arabic'
+            'ar': 'Arabic',
+            'zh': 'Chinese (Simplified)',
+            'zh-TW': 'Chinese (Traditional)',
+            'de': 'German',
+            'pt': 'Portuguese',
+            'pt-BR': 'Portuguese (Brazil)',
+            'ru': 'Russian',
+            'ja': 'Japanese',
+            'ko': 'Korean',
+            'it': 'Italian',
+            'nl': 'Dutch',
+            'tr': 'Turkish',
+            'vi': 'Vietnamese',
+            'id': 'Indonesian',
+            'ms': 'Malay',
+            'th': 'Thai',
+            'sv': 'Swedish',
+            'no': 'Norwegian',
+            'da': 'Danish',
+            'fi': 'Finnish',
+            'pl': 'Polish',
+            'uk': 'Ukrainian',
+            'ro': 'Romanian',
+            'hu': 'Hungarian',
+            'cs': 'Czech',
+            'sk': 'Slovak',
+            'el': 'Greek',
+            'bg': 'Bulgarian',
+            'hr': 'Croatian',
+            'sr': 'Serbian',
+            'sl': 'Slovenian',
+            'lt': 'Lithuanian',
+            'lv': 'Latvian',
+            'et': 'Estonian',
+            'he': 'Hebrew',
+            'fa': 'Persian (Farsi)',
+            'ur': 'Urdu',
+            'bn': 'Bengali',
+            'pa': 'Punjabi',
+            'mr': 'Marathi',
+            'gu': 'Gujarati',
+            'ta': 'Tamil',
+            'te': 'Telugu',
+            'kn': 'Kannada',
+            'ml': 'Malayalam',
+            'si': 'Sinhala',
+            'ne': 'Nepali',
+            'km': 'Khmer',
+            'lo': 'Lao',
+            'my': 'Burmese',
+            'am': 'Amharic',
+            'sw': 'Swahili',
+            'af': 'Afrikaans',
+            'sq': 'Albanian',
+            'mk': 'Macedonian',
+            'bn-IN': 'Assamese',
+            'or': 'Odia'
         };
-        
-        return `🔤 Demo Translation to ${langNames[targetLang] || targetLang.toUpperCase()}:\n\n[This would be the translated version of your summary in ${langNames[targetLang] || targetLang}]\n\n⚠️ This is a demo response - Chrome's Translation AI is not available`;
+
+        const name = langNames[targetLang] || langNames[targetLang.toLowerCase()] || targetLang.toUpperCase();
+        return `🔤 Demo Translation to ${name}:\n\n[This would be the translated version of your summary in ${name}]\n\n⚠️ This is a demo response - Chrome's Translation AI is not available`;
     }
 
     // Check if Summarizer API is available
     async function checkSummarizerAvailability() {
         try {
+            try { dbg('checkSummarizerAvailability start'); } catch (e) {}
             if (!('Summarizer' in self)) {
+                try { dbg('Summarizer not in self'); } catch (e) {}
                 return { available: false, reason: 'Summarizer API not supported' };
             }
             
             const availability = await Summarizer.availability();
+            try { dbg('Summarizer availability', availability); } catch (e) {}
             console.log('Summarizer availability:', availability);
             
             return {
@@ -69,32 +142,34 @@
                 reason: availability === 'available' || availability === 'downloadable' ? null : `Status: ${availability}`
             };
         } catch (error) {
+            try { dbg('checkSummarizerAvailability error', error); } catch (e) {}
             console.error('Error checking Summarizer availability:', error);
             return { available: false, reason: error.message };
         }
     }
 
-    // Check if Translator API is available
-    async function checkTranslatorAvailability() {
+    // Check if Translator API is available for a specific language pair
+    // Returns an object { available: bool, status: string, reason: string|null }
+    async function checkTranslatorAvailability(sourceLanguage = 'en', targetLanguage = 'es') {
         try {
+            try { dbg('checkTranslatorAvailability start', { sourceLanguage, targetLanguage }); } catch (e) {}
             if (!('Translator' in self)) {
-                return { available: false, reason: 'Translator API not supported' };
+                try { dbg('Translator not in self'); } catch (e) {}
+                return { available: false, status: 'api-missing', reason: 'Translator API not supported' };
             }
-            
-            const availability = await Translator.availability({
-                sourceLanguage: 'en',
-                targetLanguage: 'es'
-            });
-            console.log('Translator availability:', availability);
-            
+
+            const availability = await Translator.availability({ sourceLanguage, targetLanguage });
+            try { dbg('Translator availability', { sourceLanguage, targetLanguage, availability }); } catch (e) {}
+
             return {
                 available: availability === 'available' || availability === 'downloadable',
                 status: availability,
                 reason: availability === 'available' || availability === 'downloadable' ? null : `Status: ${availability}`
             };
         } catch (error) {
+            try { dbg('checkTranslatorAvailability error', error); } catch (e) {}
             console.error('Error checking Translator availability:', error);
-            return { available: false, reason: error.message };
+            return { available: false, status: 'error', reason: error.message };
         }
     }
 
@@ -111,18 +186,37 @@
             }
 
             showStatus('Extracting page content...');
-            const [{ result: pageText }] = await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                world: 'MAIN',
-                func: () => {
-                    const sel = window.getSelection?.();
-                    if (sel && sel.toString().trim().length > 0) {
-                        return sel.toString();
+            let pageText = '';
+            try {
+                const res = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    world: 'MAIN',
+                    func: () => {
+                        try {
+                            const sel = window.getSelection?.();
+                            if (sel && sel.toString().trim().length > 0) {
+                                return sel.toString();
+                            }
+                            const text = document.body?.innerText || '';
+                            return text.replace(/\s+/g, ' ').trim();
+                        } catch (e) {
+                            // If page access throws inside the page, propagate a clear message
+                            return '';
+                        }
                     }
-                    const text = document.body?.innerText || '';
-                    return text.replace(/\s+/g, ' ').trim();
+                });
+                if (Array.isArray(res) && res[0] && typeof res[0].result === 'string') {
+                    pageText = res[0].result;
+                } else if (res && res.result && typeof res.result === 'string') {
+                    pageText = res.result;
+                } else {
+                    pageText = '';
                 }
-            });
+            } catch (execError) {
+                console.warn('Content extraction failed:', execError);
+                showStatus('Cannot read page content (maybe restricted). Using demo summary.', true);
+                return getDemoSummary('');
+            }
             if (!pageText || pageText.trim().length < 20) {
                 showStatus('No readable text found on this page.', true);
                 return '⚠️ No readable text found.';
@@ -142,16 +236,18 @@
 
             showStatus('Preparing summarizer...');
             // Create summarizer session if not exists
-            if (!summarizerSession) {
+                if (!summarizerSession) {
                 const tpl = (document.getElementById('templateSelect')?.value) || 'default';
                 const sharedContext = tpl === 'product' ? 'Summarize as product highlights: features, pros/cons, price, comparisons.'
                   : tpl === 'job' ? 'Summarize role: responsibilities, qualifications, location, compensation (if present).'
                   : tpl === 'research' ? 'Summarize research: problem, method, key findings, limitations.'
                   : undefined;
+                // Ensure outputLanguage is set to avoid Summarizer API warnings.
                 summarizerSession = await Summarizer.create({
                     type: 'key-points',
                     format: 'markdown',
                     length: 'medium',
+                    outputLanguage: 'en',
                     ...(sharedContext ? { sharedContext } : {}),
                     monitor(m) {
                         m.addEventListener('downloadprogress', (e) => {
@@ -251,55 +347,116 @@
 
     // Save summary function
     function saveSummary(summary, url) {
+        try { dbg('saveSummary called', { url, length: (summary||'').length }); } catch (e) {}
         return new Promise((resolve) => {
-            chrome.storage.local.get({ summaries: [] }, (data) => {
-                const summaries = data.summaries;
-                summaries.unshift({
-                    url,
-                    summary,
-                    date: new Date().toISOString()
-                });
-                chrome.storage.local.set({ summaries }, resolve);
-            });
+            // Update in-memory cache first
+            try {
+                cachedSummaries = cachedSummaries || [];
+                cachedSummaries.unshift({ url, summary, date: new Date().toISOString() });
+            } catch (e) { cachedSummaries = [{ url, summary, date: new Date().toISOString() }]; }
+            // Persist to storage asynchronously
+            chrome.storage.local.set({ summaries: cachedSummaries }, resolve);
         });
     }
 
-    // Load saved summaries (optional search query)
+    // Debounce helper to limit frequent calls (search, etc.)
+    function debounce(fn, wait) {
+        let t = null;
+        return function (...args) {
+            clearTimeout(t);
+            t = setTimeout(() => fn.apply(this, args), wait);
+        };
+    }
+
+    // Global simple, safe formatter: converts plaintext with asterisks and newlines into basic HTML
+    function formatSummary(text) {
+        if (!text) return '';
+        // Basic sanitize: escape HTML
+        const esc = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const lines = esc(String(text)).split(/\r?\n/).map(l => l.trim());
+
+        // Detect bullet blocks (lines starting with '*' or '-')
+        let html = '';
+        let inList = false;
+        for (const line of lines) {
+            if (!line) {
+                if (inList) { html += '</ul>'; inList = false; }
+                html += '<p></p>';
+                continue;
+            }
+            const m = line.match(/^([\*\-])\s+(.*)$/);
+            if (m) {
+                if (!inList) { html += '<ul>'; inList = true; }
+                html += `<li>${m[2]}</li>`;
+            } else {
+                if (inList) { html += '</ul>'; inList = false; }
+                html += `<p>${line}</p>`;
+            }
+        }
+        if (inList) html += '</ul>';
+        return html;
+    }
+
+    // Load saved summaries (optional search query) - uses in-memory cache for speed
     function loadSavedSummaries(query = '') {
-        chrome.storage.local.get({ summaries: [] }, (data) => {
-            const savedList = document.getElementById('savedList');
-            if (!savedList) return;
+        try { dbg('loadSavedSummaries called', { query }); } catch (e) {}
+        const savedList = document.getElementById('savedList');
+        if (!savedList) return;
+
+        // If we don't have cachedSummaries yet, get them once and cache
+        const render = (items, totalCount) => {
             savedList.innerHTML = '';
-
-            const q = (query || '').trim().toLowerCase();
-            const items = q
-                ? data.summaries.filter(item =>
-                    (item.url || '').toLowerCase().includes(q) ||
-                    (item.summary || '').toLowerCase().includes(q)
-                  )
-                : data.summaries;
-
-            if (items.length === 0) {
+            if (!items || items.length === 0) {
                 const li = document.createElement('li');
-                li.textContent = data.summaries.length === 0 ? 'No saved summaries yet.' : 'No matches.';
+                li.textContent = totalCount === 0 ? 'No saved summaries yet.' : 'No matches.';
                 savedList.appendChild(li);
                 return;
             }
 
-            items.forEach(item => {
+            const frag = document.createDocumentFragment();
+            for (const item of items) {
                 const li = document.createElement('li');
                 const date = new Date(item.date).toLocaleDateString();
                 li.innerHTML = `
           <div class="saved-date">${date}</div>
-          <div class="saved-summary">${item.summary.slice(0, 100)}...</div>
+          <div class="saved-summary">${(item.summary||'').slice(0, 100)}...</div>
         `;
                 li.addEventListener('click', () => {
-                    document.getElementById('summaryOutput').textContent = item.summary;
+                    const out = document.getElementById('summaryOutput');
+                    if (out) {
+                        out.innerHTML = formatSummary(item.summary);
+                    }
                     currentSummary = item.summary;
                 });
-                savedList.appendChild(li);
+                frag.appendChild(li);
+            }
+            savedList.appendChild(frag);
+        };
+
+        if (cachedSummaries === null) {
+            chrome.storage.local.get({ summaries: [] }, (data) => {
+                cachedSummaries = data.summaries || [];
+                try { dbg('loaded summaries from storage', cachedSummaries.length); } catch (e) {}
+                const q = (query || '').trim().toLowerCase();
+                const items = q
+                    ? cachedSummaries.filter(item =>
+                        (item.url || '').toLowerCase().includes(q) ||
+                        (item.summary || '').toLowerCase().includes(q)
+                      )
+                    : cachedSummaries;
+                render(items, cachedSummaries.length);
             });
-        });
+            return;
+        }
+
+        const q = (query || '').trim().toLowerCase();
+        const items = q
+            ? cachedSummaries.filter(item =>
+                (item.url || '').toLowerCase().includes(q) ||
+                (item.summary || '').toLowerCase().includes(q)
+              )
+            : cachedSummaries;
+        render(items, cachedSummaries.length);
     }
 
     // Initialize the extension
@@ -327,11 +484,13 @@
             });
         });
 
-        // Load saved summaries
-        loadSavedSummaries();
+    // Load saved summaries
+    dbg('DOMContentLoaded - calling initial loadSavedSummaries');
+    loadSavedSummaries();
 
-        // Search saved summaries
+        // Search saved summaries (debounced)
         const searchInput = document.getElementById('searchInput');
+        const debouncedLoad = debounce((val) => loadSavedSummaries(val), 160);
         if (searchInput) {
             // Defensive: ensure the input is enabled and focusable in case styles or other scripts made it inert
             try {
@@ -343,20 +502,164 @@
 
             // Primary input listener
             searchInput.addEventListener('input', () => {
-                loadSavedSummaries(searchInput.value);
+                try { dbg('searchInput input', searchInput.value); } catch (e) {}
+                debouncedLoad(searchInput.value);
             });
 
             // Extra handlers to cover cases where input events may not fire or focus is blocked
             searchInput.addEventListener('click', () => {
+                try { dbg('searchInput click'); } catch (e) {}
                 try { searchInput.focus(); } catch (e) {}
             });
             searchInput.addEventListener('keyup', (e) => {
                 // keep behavior consistent for keyboard interactions (including IME)
+                try { dbg('searchInput keyup', e.key); } catch (e) {}
                 loadSavedSummaries(searchInput.value);
             });
 
             // If saved items exist, ensure the current query is applied
             loadSavedSummaries(searchInput.value || '');
+        }
+
+        // Prewarm local sessions (summarizer/translator) to reduce first-run latency
+        async function prewarmSessions() {
+            try {
+                // Touch availability checks so models start downloading if needed
+                dbg('prewarmSessions starting');
+                checkSummarizerAvailability().then(av => {
+                    if (av.available && !summarizerSession) {
+                        // attempt to create a light session in background to warm model caches
+                        // include outputLanguage to avoid Summarizer warnings and catch errors
+                        Summarizer?.create?.({ type: 'key-points', format: 'short', length: 'short', outputLanguage: 'en' })
+                            .then(s => { summarizerSession = s; console.debug('summarizer prewarmed'); })
+                            .catch(()=>{});
+                    }
+                }).catch(()=>{});
+
+                checkTranslatorAvailability().then(av => {
+                    if (av.available && !translatorSession) {
+                        Translator?.create?.({ sourceLanguage: 'en', targetLanguage: 'hi' })
+                            .then(t => { translatorSession = t; console.debug('translator prewarmed'); })
+                            .catch(()=>{});
+                    }
+                }).catch(()=>{});
+            } catch (e) { /* noop */ }
+        }
+
+        // Kick off prewarm but don't block the UI
+        setTimeout(prewarmSessions, 300);
+
+        // Annotate language options with availability information so users know which
+        // targets are supported by the built-in Translator API. Runs async and won't
+        // block UI. If the Translator API is missing entirely, mark all options as
+        // API-unavailable (demo mode).
+        async function annotateLangSupport() {
+            try {
+                const select = document.getElementById('langSelect');
+                if (!select) return;
+
+                // Helper to strip previous annotations from an option's text
+                const stripAnnotation = (text) => text.replace(/\s*\((API unavailable|not supported|unsupported|Not supported|Unavailable)\)\s*$/i, '').trim();
+
+                // If Translator API is not present, mark all options as unavailable for API
+                if (!('Translator' in self)) {
+                    for (const opt of Array.from(select.options)) {
+                        opt.dataset.supported = 'false';
+                        opt.text = stripAnnotation(opt.text) + ' (API unavailable)';
+                    }
+                    // Informative status for the popup
+                    showStatus('Translator API not available — translation will use demo placeholders');
+                    return;
+                }
+
+                // Otherwise, query availability for each language. Keep UI responsive by
+                // checking sequentially with short delay to avoid spamming heavy checks.
+                for (const opt of Array.from(select.options)) {
+                    const code = opt.value;
+                    // reset text first
+                    opt.text = stripAnnotation(opt.text);
+                    try {
+                        // Treat English (target === 'en') as supported by default since
+                        // translating to the same language isn't necessary and availability
+                        // checks may return unexpected values for identical source/target.
+                        if (code === 'en') {
+                            opt.dataset.supported = 'true';
+                            opt.dataset.availability = 'available';
+                            // leave label unchanged for English
+                            await new Promise(r => setTimeout(r, 30));
+                            continue;
+                        }
+
+                        const availability = await Translator.availability({ sourceLanguage: 'en', targetLanguage: code });
+                        // Store raw availability string to data attribute for later decisions
+                        opt.dataset.availability = availability;
+                        if (availability === 'available') {
+                            opt.dataset.supported = 'true';
+                            // leave label unchanged for available
+                        } else if (availability === 'downloadable') {
+                            opt.dataset.supported = 'true';
+                            opt.text = stripAnnotation(opt.text) + ' (downloadable)';
+                        } else {
+                            opt.dataset.supported = 'false';
+                            opt.text = stripAnnotation(opt.text) + ' (not supported)';
+                        }
+                    } catch (e) {
+                        // On error, conservatively mark unsupported
+                        opt.dataset.supported = 'false';
+                        opt.dataset.availability = 'error';
+                        opt.text = stripAnnotation(opt.text) + ' (not supported)';
+                    }
+                    // Small pause to avoid overwhelming possible model availability checks
+                    await new Promise(r => setTimeout(r, 60));
+                }
+            } catch (e) {
+                console.warn('annotateLangSupport failed', e);
+            }
+        }
+
+    // Start annotation shortly after prewarm so the UI is interactive quickly
+    setTimeout(() => { annotateLangSupport(); }, 800);
+
+    // Ensure translate availability state is updated once annotations complete.
+    // annotateLangSupport sets dataset attributes; call update once a bit later
+    setTimeout(() => { try { updateTranslateAvailability(); } catch (e) {} }, 1400);
+
+        // Helper to update Translate button enabled/disabled state based on
+        // selected language and API availability. Also shows a short tooltip
+        // via status when user picks an unsupported language.
+        function updateTranslateAvailability() {
+            try {
+                const langSelect = document.getElementById('langSelect');
+                const translateBtnEl = document.getElementById('translateBtn');
+                if (!langSelect || !translateBtnEl) return;
+                const selected = langSelect.options[langSelect.selectedIndex];
+                const apiPresent = ('Translator' in self);
+                // If API missing, allow Translate (we will use demo fallback)
+                if (!apiPresent) {
+                    translateBtnEl.disabled = false;
+                    return;
+                }
+                // If target language is English, consider it supported (no translation needed)
+                if (selected?.value === 'en') {
+                    translateBtnEl.disabled = false;
+                    showStatus('Ready');
+                    return;
+                }
+                const supported = selected?.dataset?.supported === 'true';
+                translateBtnEl.disabled = !supported;
+                if (!supported) {
+                    // show brief hint in status bar (non-blocking)
+                    showStatus('Selected language currently not available locally. Select another or click Translate to use demo.', true);
+                } else {
+                    showStatus('Ready');
+                }
+            } catch (e) { /* noop */ }
+        }
+
+        // Wire change handler so selections immediately enable/disable Translate
+        const langSelectEl = document.getElementById('langSelect');
+        if (langSelectEl) {
+            langSelectEl.addEventListener('change', () => updateTranslateAvailability());
         }
 
         // Get button elements
@@ -377,6 +680,7 @@
 
         // Summarize button handler
         summarizeBtn.addEventListener('click', async () => {
+            dbg('summarizeBtn clicked');
             try {
                 summarizeBtn.disabled = true;
                 translateBtn.disabled = true;
@@ -386,6 +690,8 @@
                 const summary = await summarizePage();
                 currentSummary = summary;
                 showStatus(summary);
+
+                dbg('summarizeBtn: summary length', (summary||'').length);
 
                 translateBtn.disabled = false;
                 saveBtn.disabled = false;
@@ -405,17 +711,71 @@
                 return;
             }
 
+            const targetLang = document.getElementById('langSelect').value;
+            translateBtn.disabled = true;
             try {
-                translateBtn.disabled = true;
-                showStatus('Translating...');
+                showStatus('Checking translator availability...');
 
-                const targetLang = document.getElementById('langSelect').value;
-                const translated = await translateText(currentSummary, targetLang);
-                currentSummary = translated;
-                showStatus(translated);
+                if (!('Translator' in self)) {
+                    showStatus('Translator API not available — using demo translation', true);
+                    const demo = getDemoTranslation(currentSummary, targetLang);
+                    currentSummary = demo;
+                    showStatus(demo);
+                    return;
+                }
+
+                // If the target language is English, skip translation (already English)
+                if (targetLang === 'en') {
+                    showStatus('Target language is English — no translation needed.');
+                    return;
+                }
+
+                // Query availability for the desired pair directly
+                const av = await checkTranslatorAvailability('en', targetLang);
+                try { dbg('translate availability', av); } catch (e) {}
+
+                if (!av.available) {
+                    // Not available for this pair — show demo fallback
+                    showStatus(`Translation not supported for ${targetLang}. Using demo fallback.`, true);
+                    const demo = getDemoTranslation(currentSummary, targetLang);
+                    currentSummary = demo;
+                    showStatus(demo);
+                    return;
+                }
+
+                // Create a translator — if model needs download the monitor will report progress
+                showStatus('Preparing translator...');
+                const translator = await Translator.create({
+                    sourceLanguage: 'en',
+                    targetLanguage: targetLang,
+                    monitor(m) {
+                                m.addEventListener('downloadprogress', (e) => {
+                                    try {
+                                        const pct = Math.round((e.loaded || 0) * 100);
+                                        showStatus(`Downloading translation model: ${pct}%`);
+                                        const p = document.getElementById('translateProgress');
+                                        if (p) { p.style.display = 'inline'; p.textContent = `⏳ ${pct}%`; }
+                                    } catch (e) {}
+                                });
+                    }
+                });
+
+                showStatus('Translating...');
+                const pEl = document.getElementById('translateProgress');
+                if (pEl) { pEl.style.display = 'inline'; pEl.textContent = '🔁 Translating…'; }
+                const result = await translator.translate(currentSummary);
+                currentSummary = result;
+                showStatus(result);
+                if (pEl) { pEl.style.display = 'none'; }
+
             } catch (error) {
                 console.error('Error:', error);
-                showStatus('Error translating text. Please try again.', true);
+                // Fallback to demo translation
+                const demo = getDemoTranslation(currentSummary, targetLang);
+                currentSummary = demo;
+                showStatus(demo);
+                const pElErr = document.getElementById('translateProgress');
+                if (pElErr) { pElErr.style.display = 'none'; }
             } finally {
                 translateBtn.disabled = false;
             }
@@ -448,6 +808,7 @@
 
         // Save button handler
         saveBtn.addEventListener('click', async () => {
+            dbg('saveBtn clicked');
             if (!currentSummary) {
                 showStatus('Please generate a summary first.', true);
                 return;
@@ -457,6 +818,7 @@
                 saveBtn.disabled = true;
                 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
                 await saveSummary(currentSummary, tab.url);
+                dbg('saveBtn: saved to storage, refreshing list');
                 showStatus('Summary saved!');
                 loadSavedSummaries(document.getElementById('searchInput')?.value || '');
             } catch (error) {
@@ -681,6 +1043,8 @@
                 if (!summarizerCheck.available) {
                     return getDemoSummary((inputText || '').slice(0, 1000));
                 }
+
+                // Use global formatSummary for rendering
                 if (!navigator.userActivation?.isActive) {
                     // In batch mode, rely on prior user click to grant activation; continue anyway.
                 }
